@@ -1,0 +1,12 @@
+{
+  "name": "envcheck",
+  "version": "0.1.0",
+  "description": "Validate .env files against a schema",
+  "bin": {
+    "envcheck": "bin/envcheck.js"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=14"
+  }
+}
