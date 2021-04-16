@@ -5,6 +5,9 @@
   "bin": {
     "envcheck": "bin/envcheck.js"
   },
+  "scripts": {
+    "test": "node test/run.js"
+  },
   "license": "MIT",
   "engines": {
     "node": ">=14"
