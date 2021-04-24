@@ -2,7 +2,10 @@
 'use strict';
 
 const fs = require('fs');
-const { parseEnv } = require('../lib/parse');
+const { parseEnv, toObject } = require('../lib/parse');
 
 const file = process.argv[2] || '.env';
-console.log(JSON.stringify(parseEnv(fs.readFileSync(file, 'utf8')), null, 2));
+const { entries, errors } = parseEnv(fs.readFileSync(file, 'utf8'));
+for (const e of errors) console.error(`${file}:${e.line}: ${e.message}`);
+console.log(JSON.stringify(toObject(entries), null, 2));
+process.exitCode = errors.length > 0 ? 1 : 0;
