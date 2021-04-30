@@ -8,8 +8,8 @@ const values = text => toObject(parseEnv(text).entries);
 
 test('parseEnv: plain assignments with line numbers', () => {
   assert.deepStrictEqual(parseEnv('A=1\n\n# note\nB=two\n').entries, [
-    { key: 'A', value: '1', line: 1 },
-    { key: 'B', value: 'two', line: 4 }
+    { key: 'A', value: '1', line: 1, quote: null },
+    { key: 'B', value: 'two', line: 4, quote: null }
   ]);
 });
 
@@ -25,12 +25,13 @@ test('parseEnv: spaces around the equals sign', () => {
   assert.deepStrictEqual(values('A = 1\nB= 2\nC =3'), { A: '1', B: '2', C: '3' });
 });
 
-test('parseEnv: quotes are removed', () => {
-  assert.deepStrictEqual(values('A="hello world"\nB=\'single quoted\'\nC="mismatched\''), {
-    A: 'hello world',
-    B: 'single quoted',
-    C: '"mismatched\''
-  });
+test('parseEnv: quotes are removed and remembered', () => {
+  const { entries } = parseEnv('A="hello world"\nB=\'single quoted\'\nC=plain');
+  assert.deepStrictEqual(entries.map(e => [e.value, e.quote]), [
+    ['hello world', '"'],
+    ['single quoted', "'"],
+    ['plain', null]
+  ]);
 });
 
 test('parseEnv: only the first equals sign splits', () => {
@@ -62,4 +63,39 @@ test('toObject: the last assignment wins', () => {
 test('toObject: a key called __proto__ is an ordinary key', () => {
   const o = values('__proto__=x');
   assert.strictEqual(Object.keys(o)[0], '__proto__');
+});
+
+test('parseEnv: escapes in double quotes', () => {
+  assert.deepStrictEqual(values('A="line1\\nline2"\nB="tab\\there"\nC="say \\"hi\\""\nD="back\\\\slash"'), {
+    A: 'line1\nline2',
+    B: 'tab\there',
+    C: 'say "hi"',
+    D: 'back\\slash'
+  });
+});
+
+test('parseEnv: unknown escapes are kept as written', () => {
+  assert.deepStrictEqual(values('A="C:\\path\\x"'), { A: 'C:\\path\\x' });
+});
+
+test('parseEnv: single quotes are literal', () => {
+  assert.deepStrictEqual(values("A='no\\nescape $HOME'"), { A: 'no\\nescape $HOME' });
+});
+
+test('parseEnv: inline comments end unquoted values', () => {
+  assert.deepStrictEqual(values('A=value # note\nB=a#b\nC=   # only a comment\nD="in # quotes" # after'), {
+    A: 'value',
+    B: 'a#b',
+    C: '',
+    D: 'in # quotes'
+  });
+});
+
+test('parseEnv: unterminated quote and trailing junk are errors', () => {
+  const unterminated = parseEnv('A="oops\nB=2');
+  assert.deepStrictEqual(unterminated.errors, [{ line: 1, message: 'unterminated " quote' }]);
+  assert.deepStrictEqual(unterminated.entries.map(e => e.key), ['B']);
+  const junk = parseEnv('A="x" y\nB=2');
+  assert.deepStrictEqual(junk.errors, [{ line: 1, message: 'unexpected text after the closing quote' }]);
+  assert.strictEqual(junk.entries.length, 2);
 });
