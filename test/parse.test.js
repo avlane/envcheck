@@ -94,8 +94,35 @@ test('parseEnv: inline comments end unquoted values', () => {
 test('parseEnv: unterminated quote and trailing junk are errors', () => {
   const unterminated = parseEnv('A="oops\nB=2');
   assert.deepStrictEqual(unterminated.errors, [{ line: 1, message: 'unterminated " quote' }]);
-  assert.deepStrictEqual(unterminated.entries.map(e => e.key), ['B']);
+  assert.deepStrictEqual(unterminated.entries, []);
   const junk = parseEnv('A="x" y\nB=2');
   assert.deepStrictEqual(junk.errors, [{ line: 1, message: 'unexpected text after the closing quote' }]);
   assert.strictEqual(junk.entries.length, 2);
+});
+
+test('parseEnv: multi-line quoted values', () => {
+  const { entries, errors } = parseEnv('KEY="-----BEGIN-----\nabc\ndef\n-----END-----"\nNEXT=1\n');
+  assert.deepStrictEqual(errors, []);
+  assert.strictEqual(entries[0].value, '-----BEGIN-----\nabc\ndef\n-----END-----');
+  assert.strictEqual(entries[0].line, 1);
+  assert.deepStrictEqual([entries[1].key, entries[1].line], ['NEXT', 5]);
+});
+
+test('parseEnv: single-quoted values can span lines too, without escapes', () => {
+  assert.deepStrictEqual(values("A='one\\n\ntwo'"), { A: 'one\\n\ntwo' });
+});
+
+test('parseEnv: junk after a multi-line value is reported on its last line', () => {
+  const { errors } = parseEnv('A="x\ny" z\n');
+  assert.deepStrictEqual(errors, [{ line: 2, message: 'unexpected text after the closing quote' }]);
+});
+
+test('parseEnv: an unterminated multi-line value reports where it started', () => {
+  const { entries, errors } = parseEnv('A=1\nB="never closed\nC=3\n');
+  assert.deepStrictEqual(entries.map(e => e.key), ['A']);
+  assert.deepStrictEqual(errors, [{ line: 2, message: 'unterminated " quote' }]);
+});
+
+test('parseEnv: CRLF inside a multi-line value becomes LF', () => {
+  assert.deepStrictEqual(values('A="x\r\ny"\r\n'), { A: 'x\ny' });
 });
