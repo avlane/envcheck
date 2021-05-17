@@ -1,0 +1,10 @@
+{
+  "vars": {
+    "APP_NAME": { "required": true, "description": "Display name of the service" },
+    "NODE_ENV": { "required": true, "description": "development, production or test" },
+    "PORT": { "description": "HTTP port" },
+    "DATABASE_URL": { "required": true, "description": "Primary database" },
+    "API_KEY": { "required": true, "description": "Key for the payments API" },
+    "ADMIN_EMAIL": { "description": "Where alerts go" }
+  }
+}
