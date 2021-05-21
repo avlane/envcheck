@@ -2,9 +2,10 @@
   "vars": {
     "APP_NAME": { "required": true, "description": "Display name of the service" },
     "NODE_ENV": { "required": true, "description": "development, production or test" },
-    "PORT": { "description": "HTTP port" },
-    "DATABASE_URL": { "required": true, "description": "Primary database" },
+    "PORT": { "type": "port", "description": "HTTP port" },
+    "DATABASE_URL": { "type": "url", "protocols": ["postgres", "postgresql"], "required": true, "description": "Primary database" },
     "API_KEY": { "required": true, "description": "Key for the payments API" },
-    "ADMIN_EMAIL": { "description": "Where alerts go" }
+    "DEBUG": { "type": "boolean", "description": "Verbose logging" },
+    "ADMIN_EMAIL": { "type": "email", "description": "Where alerts go" }
   }
 }
