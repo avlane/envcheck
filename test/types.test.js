@@ -8,7 +8,7 @@ const ok = (type, value, spec) => assert.strictEqual(checkType(type, value, spec
 const bad = (type, value, spec) => assert.strictEqual(typeof checkType(type, value, spec), 'string', `${type} ${value}`);
 
 test('types: the available names', () => {
-  assert.deepStrictEqual(TYPE_NAMES, ['string', 'number', 'integer', 'boolean', 'port', 'url', 'email']);
+  assert.deepStrictEqual(TYPE_NAMES, ['string', 'number', 'integer', 'boolean', 'port', 'url', 'email', 'enum', 'uuid', 'json']);
 });
 
 test('types: string accepts anything', () => {

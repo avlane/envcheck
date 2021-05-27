@@ -77,10 +77,14 @@ test('check: the broken example env file is caught', () => {
   const problems = check(exampleEntries('broken.env'), exampleSchema());
   assert.deepStrictEqual(problems.map(p => [p.key, p.line, p.code]), [
     ['APP_NAME', 1, 'empty'],
+    ['NODE_ENV', 2, 'invalid'],
     ['PORT', 3, 'invalid'],
     ['DATABASE_URL', 4, 'invalid'],
+    ['API_KEY', 5, 'invalid'],
     ['DEBUG', 6, 'invalid'],
     ['ADMIN_EMAIL', 7, 'invalid']
   ]);
-  assert.ok(problems[2].message.startsWith('must use postgres:// or postgresql://'), problems[2].message);
+  assert.ok(problems[1].message.startsWith('must be one of development, production, test'), problems[1].message);
+  assert.ok(problems[3].message.startsWith('must use postgres:// or postgresql://'), problems[3].message);
+  assert.ok(problems[4].message.startsWith('must be at least 12 characters'), problems[4].message);
 });

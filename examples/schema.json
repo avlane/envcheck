@@ -1,10 +1,11 @@
 {
   "vars": {
-    "APP_NAME": { "required": true, "description": "Display name of the service" },
-    "NODE_ENV": { "required": true, "description": "development, production or test" },
-    "PORT": { "type": "port", "description": "HTTP port" },
+    "APP_NAME": { "required": true, "maxLength": 40, "description": "Display name of the service" },
+    "NODE_ENV": { "type": "enum", "values": ["development", "production", "test"], "required": true, "description": "Runtime mode" },
+    "PORT": { "type": "port", "min": 1024, "description": "HTTP port (unprivileged)" },
     "DATABASE_URL": { "type": "url", "protocols": ["postgres", "postgresql"], "required": true, "description": "Primary database" },
-    "API_KEY": { "required": true, "description": "Key for the payments API" },
+    "REDIS_URL": { "type": "url", "protocols": ["redis", "rediss"], "description": "Cache server" },
+    "API_KEY": { "required": true, "minLength": 12, "pattern": "^[A-Za-z0-9]+$", "description": "Key for the payments API" },
     "DEBUG": { "type": "boolean", "description": "Verbose logging" },
     "ADMIN_EMAIL": { "type": "email", "description": "Where alerts go" }
   }
