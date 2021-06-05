@@ -5,6 +5,8 @@ const fs = require('fs');
 const { parseEnv, toObject } = require('../lib/parse');
 const { parseSchema, SchemaError } = require('../lib/schema');
 const { check } = require('../lib/check');
+const { resolve } = require('../lib/resolve');
+const { stringifyEnv } = require('../lib/stringify');
 const { formatText } = require('../lib/format');
 
 function fail(message) {
@@ -12,8 +14,14 @@ function fail(message) {
   process.exit(2);
 }
 
+function summarize(errorCount, warningCount) {
+  if (errorCount === 0 && warningCount === 0) return 'ok';
+  const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  return `${plural(errorCount, 'error')}, ${plural(warningCount, 'warning')}`;
+}
+
 const args = process.argv.slice(2);
-const command = ['check', 'parse'].includes(args[0]) ? args.shift() : 'parse';
+const command = ['check', 'parse', 'resolve'].includes(args[0]) ? args.shift() : 'parse';
 let schemaFile = null;
 const files = [];
 for (let i = 0; i < args.length; i++) {
@@ -28,7 +36,7 @@ if (command === 'parse') {
   console.log(JSON.stringify(toObject(entries), null, 2));
   process.exitCode = errors.length > 0 ? 1 : 0;
 } else {
-  if (!schemaFile) fail('check needs --schema FILE');
+  if (!schemaFile) fail(`${command} needs --schema FILE`);
   let schema;
   try {
     schema = parseSchema(fs.readFileSync(schemaFile, 'utf8'), schemaFile);
@@ -37,7 +45,16 @@ if (command === 'parse') {
     fail(err.message);
   }
   const problems = check(entries, schema);
-  for (const line of formatText(problems, file)) console.log(line);
-  console.log(problems.length === 0 && errors.length === 0 ? 'ok' : `${problems.length} problem${problems.length === 1 ? '' : 's'}`);
-  process.exitCode = problems.length > 0 || errors.length > 0 ? 1 : 0;
+  const errorCount = problems.filter(p => p.level === 'error').length;
+  const warningCount = problems.length - errorCount;
+  const failed = errorCount > 0 || errors.length > 0;
+  if (command === 'resolve') {
+    for (const line of formatText(problems, file)) console.error(line);
+    if (failed) process.exitCode = 1;
+    else process.stdout.write(stringifyEnv(resolve(entries, schema).values));
+  } else {
+    for (const line of formatText(problems, file)) console.log(line);
+    console.log(summarize(errorCount, warningCount));
+    process.exitCode = failed ? 1 : 0;
+  }
 }
