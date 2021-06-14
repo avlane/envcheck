@@ -25,6 +25,13 @@ test('parseSchema: rejects bad JSON and bad shapes', () => {
   assert.throws(() => parseSchema('null'), /must be a JSON object/);
 });
 
+test('parseSchema: top-level properties', () => {
+  assert.strictEqual(parseSchema('{"vars": {}}').allowUnknown, false);
+  assert.strictEqual(parseSchema('{"vars": {}, "allowUnknown": true}').allowUnknown, true);
+  assert.throws(() => parseSchema('{"vars": {}, "allowUnknown": "yes"}'), /"allowUnknown" must be true or false/);
+  assert.throws(() => parseSchema('{"vars": {}, "varz": {}}'), /unknown top-level property "varz"/);
+});
+
 test('parseSchema: typos in property names are caught', () => {
   assert.throws(() => parseSchema('{"vars": {"A": {"requird": true}}}'), /A: unknown property "requird"/);
   assert.throws(() => parseSchema('{"vars": {"A": {"required": "yes"}}}'), /A: "required" must be true or false/);

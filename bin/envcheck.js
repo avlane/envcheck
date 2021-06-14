@@ -23,9 +23,11 @@ function summarize(errorCount, warningCount) {
 const args = process.argv.slice(2);
 const command = ['check', 'parse', 'resolve'].includes(args[0]) ? args.shift() : 'parse';
 let schemaFile = null;
+let strict = false;
 const files = [];
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--schema') schemaFile = args[++i];
+  else if (args[i] === '--strict') strict = true;
   else files.push(args[i]);
 }
 const file = files[0] || '.env';
@@ -44,7 +46,7 @@ if (command === 'parse') {
     if (!(err instanceof SchemaError)) throw err;
     fail(err.message);
   }
-  const problems = check(entries, schema);
+  const problems = check(entries, schema, { strict });
   const errorCount = problems.filter(p => p.level === 'error').length;
   const warningCount = problems.length - errorCount;
   const failed = errorCount > 0 || errors.length > 0;

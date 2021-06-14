@@ -82,9 +82,43 @@ test('check: the broken example env file is caught', () => {
     ['DATABASE_URL', 4, 'invalid'],
     ['API_KEY', 5, 'invalid'],
     ['DEBUG', 6, 'invalid'],
-    ['ADMIN_EMAIL', 7, 'invalid']
+    ['ADMIN_EMAIL', 7, 'invalid'],
+    ['UNUSED_FLAG', 8, 'unknown']
   ]);
+  assert.strictEqual(problems[7].level, 'warning');
   assert.ok(problems[1].message.startsWith('must be one of development, production, test'), problems[1].message);
   assert.ok(problems[3].message.startsWith('must use postgres:// or postgresql://'), problems[3].message);
   assert.ok(problems[4].message.startsWith('must be at least 12 characters'), problems[4].message);
+  assert.strictEqual(check(exampleEntries('broken.env'), exampleSchema(), { strict: true })[7].level, 'error');
+});
+
+test('check: unknown variables are warnings with a spelling hint', () => {
+  const typed = { vars: { DATABASE_URL: {}, PORT: {} } };
+  const problems = check(parseEnv('DATABSE_URL=x\nPORT=1\nOTHER=2\n').entries, typed);
+  assert.deepStrictEqual(problems, [
+    { level: 'warning', code: 'unknown', key: 'DATABSE_URL', line: 1, message: 'is not in the schema (did you mean DATABASE_URL?)' },
+    { level: 'warning', code: 'unknown', key: 'OTHER', line: 3, message: 'is not in the schema' }
+  ]);
+});
+
+test('check: --strict turns unknown variables into errors', () => {
+  const problems = check(parseEnv('OTHER=2\n').entries, { vars: {} }, { strict: true });
+  assert.deepStrictEqual(problems.map(p => p.level), ['error']);
+});
+
+test('check: allowUnknown silences them', () => {
+  const problems = check(parseEnv('OTHER=2\n').entries, { vars: {}, allowUnknown: true }, { strict: true });
+  assert.deepStrictEqual(problems, []);
+});
+
+test('check: a missing required variable mentions a near-miss in the file', () => {
+  const problems = check(parseEnv('DATABSE_URL=x\n').entries, { vars: { DATABASE_URL: { required: true } } });
+  const missing = problems.find(p => p.code === 'missing');
+  assert.strictEqual(missing.message, 'is required but missing (DATABSE_URL is set, is that a typo?)');
+});
+
+test('check: a variable set twice is reported once as unknown', () => {
+  const problems = check(parseEnv('X=1\nX=2\n').entries, { vars: {} });
+  assert.strictEqual(problems.length, 1);
+  assert.strictEqual(problems[0].line, 2);
 });
