@@ -5,6 +5,7 @@ const fs = require('fs');
 const { parseEnv, toObject } = require('../lib/parse');
 const { parseSchema, SchemaError } = require('../lib/schema');
 const { check } = require('../lib/check');
+const { lint } = require('../lib/lint');
 const { resolve } = require('../lib/resolve');
 const { stringifyEnv } = require('../lib/stringify');
 const { formatText } = require('../lib/format');
@@ -21,7 +22,7 @@ function summarize(errorCount, warningCount) {
 }
 
 const args = process.argv.slice(2);
-const command = ['check', 'parse', 'resolve'].includes(args[0]) ? args.shift() : 'parse';
+const command = ['check', 'parse', 'resolve', 'lint'].includes(args[0]) ? args.shift() : 'parse';
 let schemaFile = null;
 let strict = false;
 const files = [];
@@ -31,10 +32,15 @@ for (let i = 0; i < args.length; i++) {
   else files.push(args[i]);
 }
 const file = files[0] || '.env';
-const { entries, errors } = parseEnv(fs.readFileSync(file, 'utf8'));
+const text = fs.readFileSync(file, 'utf8');
+const { entries, errors } = parseEnv(text);
 for (const e of errors) console.error(`${file}:${e.line}: ${e.message}`);
 
-if (command === 'parse') {
+if (command === 'lint') {
+  const problems = lint(text, { entries, errors });
+  for (const line of formatText(problems, file)) console.log(line);
+  process.exitCode = problems.length > 0 || errors.length > 0 ? 1 : 0;
+} else if (command === 'parse') {
   console.log(JSON.stringify(toObject(entries), null, 2));
   process.exitCode = errors.length > 0 ? 1 : 0;
 } else {
