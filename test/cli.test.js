@@ -105,6 +105,36 @@ test('cli: syntax errors in the env file fail the run', () => {
   }
 });
 
+test('cli: diff', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'envcheck-test-'));
+  const a = path.join(dir, 'a.env');
+  const b = path.join(dir, 'b.env');
+  fs.writeFileSync(a, 'ONE=1\nTWO=2\nSHARED=x\n');
+  fs.writeFileSync(b, 'THREE=3\nSHARED=y\nTWO=2\n');
+  try {
+    const plain = runCli(['diff', a, b]);
+    assert.strictEqual(plain.code, 1);
+    assert.strictEqual(plain.out, `- ONE  only in ${a}\n+ THREE  only in ${b}\n`);
+    const values = runCli(['diff', a, b, '--values']);
+    assert.ok(values.out.endsWith('~ SHARED  values differ\n'), values.out);
+    assert.ok(!values.out.includes('=x') && !values.out.includes('=y'));
+    fs.writeFileSync(b, 'TWO=2\nONE=1\nSHARED=y\n');
+    const same = runCli(['diff', a, b]);
+    assert.strictEqual(same.code, 0);
+    assert.strictEqual(same.out, 'same variables\n');
+    assert.strictEqual(runCli(['diff', a, b, '--values']).code, 1);
+  } finally {
+    fs.unlinkSync(a);
+    fs.unlinkSync(b);
+    fs.rmdirSync(dir);
+  }
+});
+
+test('cli: diff needs exactly two files', () => {
+  assert.strictEqual(runCli(['diff', example('app.env')]).code, 2);
+  assert.ok(runCli(['diff']).err.includes('diff needs two files'));
+});
+
 test('cli: usage problems exit with status 2', () => {
   assert.strictEqual(runCli([]).code, 2);
   assert.ok(runCli([]).err.includes('no command given'));
