@@ -87,8 +87,8 @@ test('check: the broken example env file is caught', () => {
   ]);
   assert.strictEqual(problems[7].level, 'warning');
   assert.ok(problems[1].message.startsWith('must be one of development, production, test'), problems[1].message);
-  assert.ok(problems[3].message.startsWith('must use postgres:// or postgresql://'), problems[3].message);
-  assert.ok(problems[4].message.startsWith('must be at least 12 characters'), problems[4].message);
+  assert.strictEqual(problems[3].message, 'must use postgres:// or postgresql://');
+  assert.strictEqual(problems[4].message, 'must be at least 12 characters');
   assert.strictEqual(check(exampleEntries('broken.env'), exampleSchema(), { strict: true })[7].level, 'error');
 });
 
@@ -121,4 +121,22 @@ test('check: a variable set twice is reported once as unknown', () => {
   const problems = check(parseEnv('X=1\nX=2\n').entries, { vars: {} });
   assert.strictEqual(problems.length, 1);
   assert.strictEqual(problems[0].line, 2);
+});
+
+test('check: secret values are never echoed, other values are', () => {
+  const typed = {
+    vars: {
+      TOKEN_X: { minLength: 10 },
+      PORT: { type: 'port' },
+      SITE: { type: 'url', protocols: ['https'], secret: true },
+      HOOK: { type: 'url', protocols: ['https'] }
+    }
+  };
+  const problems = check(parseEnv('TOKEN_X=short\nPORT=bad\nSITE=http://u:pw@a.example\nHOOK=http://u:pw@b.example\n').entries, typed);
+  const messages = Object.fromEntries(problems.map(p => [p.key, p.message]));
+  assert.strictEqual(messages.TOKEN_X, 'must be at least 10 characters');
+  assert.strictEqual(messages.PORT, 'must be a port number between 1 and 65535 (got "bad")');
+  assert.strictEqual(messages.SITE, 'must use https://');
+  assert.strictEqual(messages.HOOK, 'must use https:// (got "http://u:***@b.example")');
+  assert.ok(!JSON.stringify(problems).includes('pw'));
 });

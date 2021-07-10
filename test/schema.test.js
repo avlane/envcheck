@@ -44,6 +44,11 @@ test('parseSchema: enum needs values, other types must not have them', () => {
   assert.doesNotThrow(() => parseSchema('{"vars": {"A": {"type": "enum", "values": ["x", "y"]}}}'));
 });
 
+test('parseSchema: secret is a boolean', () => {
+  assert.doesNotThrow(() => parseSchema('{"vars": {"A": {"secret": true}}}'));
+  assert.throws(() => parseSchema('{"vars": {"A": {"secret": "yes"}}}'), /"secret" must be true or false/);
+});
+
 test('parseSchema: patterns must compile', () => {
   assert.throws(() => parseSchema('{"vars": {"A": {"pattern": "("}}}'), /A: "pattern" is not a valid regular expression/);
   assert.throws(() => parseSchema('{"vars": {"A": {"pattern": 5}}}'), /"pattern" must be a regular expression string/);

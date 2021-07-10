@@ -24,6 +24,16 @@ test('cli: check passes on the good example', () => {
   assert.strictEqual(err, '');
 });
 
+test('cli: parse hides secrets unless asked', () => {
+  const hidden = JSON.parse(runCli(['parse', example('app.env')]).out);
+  assert.strictEqual(hidden.API_KEY, '***');
+  assert.strictEqual(hidden.DATABASE_URL, 'postgres://shop:***@db.example.com:5432/shop');
+  assert.strictEqual(hidden.PORT, '8080');
+  const shown = JSON.parse(runCli(['parse', example('app.env'), '--show-secrets']).out);
+  assert.strictEqual(shown.API_KEY, 'abc123def456ghi789');
+  assert.ok(shown.DATABASE_URL.includes('s3cret'));
+});
+
 test('cli: check reports problems on the broken example', () => {
   const { code, out } = runCli(['check', example('broken.env'), '-s', SCHEMA]);
   assert.strictEqual(code, 1);
