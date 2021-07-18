@@ -115,6 +115,28 @@ test('cli: syntax errors in the env file fail the run', () => {
   }
 });
 
+test('cli: --expand resolves references before checking and resolving', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'envcheck-test-'));
+  const schema = path.join(dir, 'schema.json');
+  const env = path.join(dir, 'x.env');
+  fs.writeFileSync(schema, '{"vars": {"HOST": {"required": true}, "URL": {"type": "url", "required": true}}}');
+  fs.writeFileSync(env, 'HOST=db.example.com\nURL=postgres://${HOST}/app\n');
+  try {
+    const without = runCli(['check', env, '--schema', schema]);
+    assert.strictEqual(without.code, 0);
+    const resolved = runCli(['resolve', env, '--schema', schema, '--expand']);
+    assert.strictEqual(resolved.out, 'HOST=db.example.com\nURL=postgres://db.example.com/app\n');
+    fs.writeFileSync(env, 'HOST=db\nURL=postgres://${HOSTNAME}/app\n');
+    const broken = runCli(['check', env, '--schema', schema, '--expand']);
+    assert.strictEqual(broken.code, 1);
+    assert.ok(broken.out.includes(':2  error  URL  refers to HOSTNAME'), broken.out);
+  } finally {
+    fs.unlinkSync(schema);
+    fs.unlinkSync(env);
+    fs.rmdirSync(dir);
+  }
+});
+
 test('cli: diff', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'envcheck-test-'));
   const a = path.join(dir, 'a.env');
