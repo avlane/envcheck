@@ -162,6 +162,24 @@ test('cli: diff', () => {
   }
 });
 
+test('cli: init writes a schema that check accepts', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'envcheck-test-'));
+  const schema = path.join(dir, 'schema.json');
+  try {
+    const init = runCli(['init', example('app.env')]);
+    assert.strictEqual(init.code, 0);
+    fs.writeFileSync(schema, init.out);
+    const checked = runCli(['check', example('app.env'), '--schema', schema]);
+    assert.strictEqual(checked.code, 0);
+    assert.strictEqual(checked.out, 'ok\n');
+    const broken = runCli(['check', example('broken.env'), '--schema', schema]);
+    assert.strictEqual(broken.code, 1);
+  } finally {
+    fs.unlinkSync(schema);
+    fs.rmdirSync(dir);
+  }
+});
+
 test('cli: diff needs exactly two files', () => {
   assert.strictEqual(runCli(['diff', example('app.env')]).code, 2);
   assert.ok(runCli(['diff']).err.includes('diff needs two files'));
