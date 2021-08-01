@@ -215,3 +215,41 @@ test('cli: --help and --version', () => {
   const version = runCli(['--version']);
   assert.strictEqual(version.out, require('../package.json').version + '\n');
 });
+
+test('cli: --format json', () => {
+  const { code, out, err } = runCli(['check', example('broken.env'), '--schema', SCHEMA, '--format', 'json']);
+  assert.strictEqual(code, 1);
+  assert.strictEqual(err, '');
+  const report = JSON.parse(out);
+  assert.strictEqual(report.ok, false);
+  assert.strictEqual(report.errors, 7);
+  assert.strictEqual(report.warnings, 1);
+  assert.strictEqual(report.problems[0].key, 'APP_NAME');
+  assert.strictEqual(report.problems[0].line, 1);
+  const good = JSON.parse(runCli(['check', example('app.env'), '-s', SCHEMA, '--format=json']).out);
+  assert.deepStrictEqual([good.ok, good.errors, good.warnings, good.problems], [true, 0, 0, []]);
+  const lintReport = JSON.parse(runCli(['lint', example('app.env'), '--format', 'json']).out);
+  assert.strictEqual(lintReport.ok, true);
+  assert.strictEqual(runCli(['check', example('app.env'), '-s', SCHEMA, '--format', 'xml']).code, 2);
+});
+
+test('cli: syntax errors are listed with the other problems', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'envcheck-test-'));
+  const env = path.join(dir, 'x.env');
+  const schema = path.join(dir, 'schema.json');
+  fs.writeFileSync(env, 'NAME=ok\nthis is wrong\n');
+  fs.writeFileSync(schema, '{"vars": {"NAME": {"required": true}}}');
+  try {
+    const { code, out, err } = runCli(['check', env, '--schema', schema]);
+    assert.strictEqual(code, 1);
+    assert.strictEqual(err, '');
+    assert.ok(out.includes(':2  error  expected KEY=value'), out);
+    assert.ok(out.trimEnd().endsWith('1 error, 0 warnings'), out);
+    const json = JSON.parse(runCli(['check', env, '--schema', schema, '--format', 'json']).out);
+    assert.deepStrictEqual(json.problems.map(p => p.code), ['syntax']);
+  } finally {
+    fs.unlinkSync(env);
+    fs.unlinkSync(schema);
+    fs.rmdirSync(dir);
+  }
+});
