@@ -233,6 +233,17 @@ test('cli: --format json', () => {
   assert.strictEqual(runCli(['check', example('app.env'), '-s', SCHEMA, '--format', 'xml']).code, 2);
 });
 
+test('cli: --format github prints annotations and no summary', () => {
+  const { code, out } = runCli(['check', example('broken.env'), '--schema', SCHEMA, '--format', 'github']);
+  assert.strictEqual(code, 1);
+  const lines = out.trimEnd().split('\n');
+  assert.strictEqual(lines.length, 8);
+  assert.ok(lines[0].startsWith('::error file='), lines[0]);
+  assert.ok(lines[0].endsWith(',line=1,title=APP_NAME::is required but empty'), lines[0]);
+  assert.ok(lines[7].startsWith('::warning file='), lines[7]);
+  assert.strictEqual(runCli(['check', example('app.env'), '-s', SCHEMA, '--format', 'github']).out, '');
+});
+
 test('cli: syntax errors are listed with the other problems', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'envcheck-test-'));
   const env = path.join(dir, 'x.env');
