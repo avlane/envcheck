@@ -44,6 +44,18 @@ test('parseSchema: enum needs values, other types must not have them', () => {
   assert.doesNotThrow(() => parseSchema('{"vars": {"A": {"type": "enum", "values": ["x", "y"]}}}'));
 });
 
+test('parseSchema: requiredIf', () => {
+  assert.doesNotThrow(() => parseSchema('{"vars": {"A": {}, "B": {"requiredIf": {"A": "x"}}}}'));
+  assert.doesNotThrow(() => parseSchema('{"vars": {"A": {}, "B": {"requiredIf": {"A": true}}}}'));
+  assert.doesNotThrow(() => parseSchema('{"vars": {"A": {}, "B": {"requiredIf": {"A": ["x", "y"]}}}}'));
+  assert.throws(() => parseSchema('{"vars": {"B": {"requiredIf": {"A": "x"}}}}'), /B: "requiredIf" refers to A, which is not in the schema/);
+  assert.throws(() => parseSchema('{"vars": {"B": {"requiredIf": "A"}}}'), /"requiredIf" must be an object/);
+  assert.throws(() => parseSchema('{"vars": {"B": {"requiredIf": {}}}}'), /"requiredIf" must be an object/);
+  assert.throws(() => parseSchema('{"vars": {"B": {"requiredIf": {"B": "x"}}}}'), /cannot refer to the variable itself/);
+  assert.throws(() => parseSchema('{"vars": {"A": {}, "B": {"requiredIf": {"A": 5}}}}'), /for A must be true, a string or a list of strings/);
+  assert.throws(() => parseSchema('{"vars": {"A": {}, "B": {"default": "x", "requiredIf": {"A": true}}}}'), /cannot have "requiredIf"/);
+});
+
 test('parseSchema: secret is a boolean', () => {
   assert.doesNotThrow(() => parseSchema('{"vars": {"A": {"secret": true}}}'));
   assert.throws(() => parseSchema('{"vars": {"A": {"secret": "yes"}}}'), /"secret" must be true or false/);

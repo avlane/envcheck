@@ -140,3 +140,51 @@ test('check: secret values are never echoed, other values are', () => {
   assert.strictEqual(messages.HOOK, 'must use https:// (got "http://u:***@b.example")');
   assert.ok(!JSON.stringify(problems).includes('pw'));
 });
+
+const conditional = parseSchema(JSON.stringify({
+  vars: {
+    DB_SSL: { type: 'boolean', default: 'false' },
+    DB_CA: { requiredIf: { DB_SSL: ['true', 'yes'] } },
+    SENTRY_DSN: { type: 'url' },
+    SENTRY_ENV: { requiredIf: { SENTRY_DSN: true } },
+    BOTH: { requiredIf: { DB_SSL: 'true', SENTRY_DSN: true } }
+  }
+}));
+
+test('check: requiredIf with a value', () => {
+  assert.deepStrictEqual(check(parseEnv('DB_SSL=false\n').entries, conditional), []);
+  assert.deepStrictEqual(check(parseEnv('').entries, conditional), []);
+  const problems = check(parseEnv('DB_SSL=true\n').entries, conditional);
+  assert.deepStrictEqual(problems.map(p => [p.key, p.message]), [
+    ['DB_CA', 'is required when DB_SSL is "true" but missing']
+  ]);
+  assert.deepStrictEqual(check(parseEnv('DB_SSL=yes\nDB_CA=/etc/ca.pem\n').entries, conditional), []);
+});
+
+test('check: requiredIf true means "when it is set"', () => {
+  assert.deepStrictEqual(check(parseEnv('SENTRY_DSN=\n').entries, conditional), []);
+  const problems = check(parseEnv('SENTRY_DSN=https://k@sentry.example.com/1\n').entries, conditional);
+  assert.deepStrictEqual(problems.map(p => [p.key, p.message]), [
+    ['SENTRY_ENV', 'is required when SENTRY_DSN is set but missing']
+  ]);
+  assert.deepStrictEqual(check(parseEnv('SENTRY_DSN=https://k@sentry.example.com/1\nSENTRY_ENV=prod\n').entries, conditional), []);
+});
+
+test('check: requiredIf with several conditions needs all of them', () => {
+  const dsn = 'SENTRY_DSN=https://k@sentry.example.com/1\nSENTRY_ENV=x\n';
+  assert.deepStrictEqual(check(parseEnv(dsn).entries, conditional), []);
+  const both = check(parseEnv(dsn + 'DB_SSL=true\nDB_CA=x\n').entries, conditional);
+  assert.deepStrictEqual(both.map(p => [p.key, p.message]), [
+    ['BOTH', 'is required when DB_SSL is "true" and SENTRY_DSN is set but missing']
+  ]);
+});
+
+test('check: a conditionally required variable that is empty is an error', () => {
+  const problems = check(parseEnv('DB_SSL=true\nDB_CA=\n').entries, conditional);
+  assert.deepStrictEqual(problems.map(p => [p.key, p.code, p.line]), [['DB_CA', 'empty', 2]]);
+});
+
+test('check: another variable\'s default counts for requiredIf', () => {
+  const schema = parseSchema('{"vars": {"MODE": {"default": "on"}, "X": {"requiredIf": {"MODE": "on"}}}}');
+  assert.deepStrictEqual(check([], schema).map(p => p.key), ['X']);
+});

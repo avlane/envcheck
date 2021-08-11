@@ -5,6 +5,8 @@
     "PORT": { "type": "port", "min": 1024, "description": "HTTP port (unprivileged)" },
     "DATABASE_URL": { "type": "url", "protocols": ["postgres", "postgresql"], "required": true, "secret": true, "description": "Primary database" },
     "REDIS_URL": { "type": "url", "protocols": ["redis", "rediss"], "description": "Cache server" },
+    "SENTRY_DSN": { "type": "url", "secret": true, "description": "Error reporting endpoint" },
+    "SENTRY_ENV": { "requiredIf": { "SENTRY_DSN": true }, "description": "Environment name reported to Sentry" },
     "API_KEY": { "required": true, "secret": true, "minLength": 12, "pattern": "^[A-Za-z0-9]+$", "description": "Key for the payments API" },
     "DEBUG": { "type": "boolean", "description": "Verbose logging" },
     "ADMIN_EMAIL": { "type": "email", "description": "Where alerts go" }
