@@ -211,7 +211,7 @@ test('cli: --help and --version', () => {
   const help = runCli(['--help']);
   assert.strictEqual(help.code, 0);
   assert.ok(help.out.startsWith('usage: envcheck <command>'), help.out);
-  assert.ok(help.out.includes('resolve [FILE]'), help.out);
+  assert.ok(help.out.includes('resolve [FILE...]'), help.out);
   const version = runCli(['--version']);
   assert.strictEqual(version.out, require('../package.json').version + '\n');
 });
@@ -263,4 +263,80 @@ test('cli: syntax errors are listed with the other problems', () => {
     fs.unlinkSync(schema);
     fs.rmdirSync(dir);
   }
+});
+
+function withFiles(files, fn) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'envcheck-test-'));
+  const paths = {};
+  for (const [name, content] of Object.entries(files)) {
+    paths[name] = path.join(dir, name);
+    fs.writeFileSync(paths[name], content);
+  }
+  try {
+    return fn(paths);
+  } finally {
+    for (const file of Object.values(paths)) fs.unlinkSync(file);
+    fs.rmdirSync(dir);
+  }
+}
+
+const LAYER_SCHEMA = '{"vars": {"NAME": {"required": true}, "PORT": {"type": "port"}, "API_URL": {"type": "url", "required": true}}}';
+
+test('cli: later files override earlier ones', () => {
+  withFiles({ 'base.env': 'NAME=base\nPORT=3000\nAPI_KEY=abc\n', 'local.env': 'PORT=4000\n' }, f => {
+    const values = JSON.parse(runCli(['parse', f['base.env'], f['local.env']]).out);
+    assert.deepStrictEqual(values, { NAME: 'base', PORT: '4000', API_KEY: '***' });
+  });
+});
+
+test('cli: a layer can supply what an earlier file lacks', () => {
+  withFiles({ 'schema.json': LAYER_SCHEMA, 'base.env': 'NAME=x\n', 'local.env': 'API_URL=https://api.example.com\n' }, f => {
+    assert.strictEqual(runCli(['check', f['base.env'], '--schema', f['schema.json']]).code, 1);
+    const both = runCli(['check', f['base.env'], f['local.env'], '--schema', f['schema.json']]);
+    assert.strictEqual(both.code, 0);
+    assert.strictEqual(both.out, 'ok\n');
+  });
+});
+
+test('cli: problems name the file whose value is in force', () => {
+  withFiles({ 'schema.json': LAYER_SCHEMA, 'base.env': 'NAME=x\nPORT=3000\nAPI_URL=https://a.example.com\n', 'local.env': 'PORT=oops\n' }, f => {
+    const { code, out } = runCli(['check', f['base.env'], f['local.env'], '--schema', f['schema.json']]);
+    assert.strictEqual(code, 1);
+    assert.ok(out.includes(`${f['local.env']}:1  error  PORT  must be a port number`), out);
+    assert.ok(!out.includes(`${f['base.env']}:2`), out);
+  });
+});
+
+test('cli: variables missing from every layer are attributed to all of them', () => {
+  withFiles({ 'schema.json': LAYER_SCHEMA, 'a.env': 'NAME=x\n', 'b.env': 'PORT=80\n' }, f => {
+    const { out } = runCli(['check', f['a.env'], f['b.env'], '--schema', f['schema.json']]);
+    assert.ok(out.includes(`${f['a.env']} + ${f['b.env']}  error  API_URL  is required but missing`), out);
+  });
+});
+
+test('cli: --process-env lets the environment win', () => {
+  withFiles({ 'schema.json': LAYER_SCHEMA, 'a.env': 'NAME=x\nPORT=80\nAPI_URL=https://a.example.com\n' }, f => {
+    const args = ['check', f['a.env'], '--schema', f['schema.json']];
+    assert.strictEqual(runCli(args, { PORT: 'nope' }).code, 0);
+    const { code, out } = runCli(args.concat('--process-env'), { PORT: 'nope', UNRELATED: '1' });
+    assert.strictEqual(code, 1);
+    assert.ok(out.includes('(environment)  error  PORT  must be a port number'), out);
+    assert.ok(!out.includes('UNRELATED'), out);
+    const filled = runCli(['resolve', f['a.env'], '--schema', f['schema.json'], '--process-env'], { NAME: 'from-env' });
+    assert.ok(filled.out.startsWith('NAME=from-env\n'), filled.out);
+  });
+});
+
+test('cli: lint checks each file on its own', () => {
+  withFiles({ 'one.env': 'A=1\n', 'two.env': 'b=2\nB=3\n' }, f => {
+    const { code, out } = runCli(['lint', f['one.env'], f['two.env']]);
+    assert.strictEqual(code, 1);
+    const lines = out.trimEnd().split('\n');
+    assert.strictEqual(lines.length, 1);
+    assert.ok(lines[0].startsWith(`${f['two.env']}:1  warning  b  should be UPPER_CASE`), lines[0]);
+  });
+});
+
+test('cli: init takes a single file', () => {
+  assert.strictEqual(runCli(['init', example('app.env'), example('app.env')]).code, 2);
 });

@@ -188,3 +188,17 @@ test('check: another variable\'s default counts for requiredIf', () => {
   const schema = parseSchema('{"vars": {"MODE": {"default": "on"}, "X": {"requiredIf": {"MODE": "on"}}}}');
   assert.deepStrictEqual(check([], schema).map(p => p.key), ['X']);
 });
+
+test('check: problems carry the file of the entry they are about', () => {
+  const entries = [
+    { key: 'A', value: 'oops', line: 2, file: 'one.env' },
+    { key: 'B', value: 'x', line: 1, file: 'two.env' }
+  ];
+  const problems = check(entries, { vars: { A: { type: 'port' }, C: { required: true } } });
+  assert.deepStrictEqual(problems.map(p => [p.file, p.key, p.line]), [
+    ['one.env', 'A', 2],
+    ['two.env', 'B', 1],
+    [undefined, 'C', null]
+  ]);
+  assert.strictEqual('file' in problems[2], false);
+});
