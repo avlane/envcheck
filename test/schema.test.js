@@ -74,3 +74,8 @@ test('parseSchema: numeric and length limits', () => {
   assert.throws(() => parseSchema('{"vars": {"A": {"minLength": 5, "maxLength": 2}}}'), /"minLength" is greater than "maxLength"/);
   assert.doesNotThrow(() => parseSchema('{"vars": {"A": {"type": "port", "min": 1024, "max": 49151, "minLength": 1}}}'));
 });
+
+test('parseSchema: inherited object properties are not variables', () => {
+  assert.throws(() => parseSchema('{"vars": {"A": {"requiredIf": {"constructor": true}}}}'),
+    /"requiredIf" refers to constructor, which is not in the schema/);
+});
