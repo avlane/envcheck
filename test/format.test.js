@@ -1,6 +1,6 @@
 'use strict';
 
-const assert = require('assert');
+const assert = require('node:assert');
 const { test } = require('./harness');
 const { formatText, formatJson, formatGithub } = require('../lib/format');
 

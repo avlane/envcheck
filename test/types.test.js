@@ -1,6 +1,6 @@
 'use strict';
 
-const assert = require('assert');
+const assert = require('node:assert');
 const { test } = require('./harness');
 const { checkType, TYPE_NAMES } = require('../lib/types');
 

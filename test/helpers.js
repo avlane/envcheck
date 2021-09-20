@@ -1,7 +1,7 @@
 'use strict';
 
-const path = require('path');
-const { Writable } = require('stream');
+const path = require('node:path');
+const { Writable } = require('node:stream');
 const { main } = require('../lib/cli');
 
 class Sink extends Writable {

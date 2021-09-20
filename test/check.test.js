@@ -1,6 +1,6 @@
 'use strict';
 
-const assert = require('assert');
+const assert = require('node:assert');
 const { test } = require('./harness');
 const { parseEnv } = require('../lib/parse');
 const { check } = require('../lib/check');
@@ -61,8 +61,8 @@ test('check: problems are ordered by line, missing ones last', () => {
   assert.deepStrictEqual(run('').map(p => [p.key, p.line]), [['A', null], ['B', null]]);
 });
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { parseSchema } = require('../lib/schema');
 
 const EXAMPLES = path.join(__dirname, '..', 'examples');

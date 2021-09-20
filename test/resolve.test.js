@@ -1,6 +1,6 @@
 'use strict';
 
-const assert = require('assert');
+const assert = require('node:assert');
 const { test } = require('./harness');
 const { parseEnv } = require('../lib/parse');
 const { resolve } = require('../lib/resolve');
