@@ -202,3 +202,17 @@ test('check: problems carry the file of the entry they are about', () => {
   ]);
   assert.strictEqual('file' in problems[2], false);
 });
+
+test('check: deprecated variables produce a warning when they are set', () => {
+  const schema = { vars: { OLD: { deprecated: 'use NEW instead' }, NEW: {} } };
+  assert.deepStrictEqual(check(parseEnv('NEW=1\n').entries, schema), []);
+  assert.deepStrictEqual(check(parseEnv('OLD=1\nNEW=2\n').entries, schema), [
+    { level: 'warning', code: 'deprecated', key: 'OLD', line: 1, message: 'is deprecated: use NEW instead' }
+  ]);
+});
+
+test('check: a deprecated variable is still validated', () => {
+  const schema = { vars: { OLD: { type: 'port', deprecated: 'gone soon' } } };
+  const problems = check(parseEnv('OLD=nope\n').entries, schema);
+  assert.deepStrictEqual(problems.map(p => [p.code, p.level]), [['deprecated', 'warning'], ['invalid', 'error']]);
+});

@@ -340,3 +340,12 @@ test('cli: lint checks each file on its own', () => {
 test('cli: init takes a single file', () => {
   assert.strictEqual(runCli(['init', example('app.env'), example('app.env')]).code, 2);
 });
+
+test('cli: deprecated variables warn but do not fail', () => {
+  withFiles({ 'x.env': 'APP_NAME=x\nNODE_ENV=test\nDATABASE_URL=postgres://u@h/d\nAPI_KEY=abcdefghijkl\nLEGACY_API_URL=https://old.example.com\n' }, f => {
+    const { code, out } = runCli(['check', f['x.env'], '--schema', SCHEMA]);
+    assert.strictEqual(code, 0);
+    assert.ok(out.includes('warning  LEGACY_API_URL  is deprecated: use API_BASE_URL instead'), out);
+    assert.ok(out.trimEnd().endsWith('0 errors, 1 warning'), out);
+  });
+});

@@ -79,3 +79,9 @@ test('parseSchema: inherited object properties are not variables', () => {
   assert.throws(() => parseSchema('{"vars": {"A": {"requiredIf": {"constructor": true}}}}'),
     /"requiredIf" refers to constructor, which is not in the schema/);
 });
+
+test('parseSchema: deprecated needs a message', () => {
+  assert.doesNotThrow(() => parseSchema('{"vars": {"A": {"deprecated": "use B"}}}'));
+  assert.throws(() => parseSchema('{"vars": {"A": {"deprecated": true}}}'), /"deprecated" must be a non-empty message/);
+  assert.throws(() => parseSchema('{"vars": {"A": {"deprecated": " "}}}'), /"deprecated" must be a non-empty message/);
+});
